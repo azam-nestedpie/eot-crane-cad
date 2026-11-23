@@ -36,6 +36,7 @@ async function request(method, path, body) {
 }
 
 export const api = {
+    inputSchema: () => request('GET', '/input-schema'),
     listDesigns: () => request('GET', '/designs'),
     getDesign: (id) => request('GET', `/designs/${id}`),
     createDesign: (payload) => request('POST', '/designs', payload),

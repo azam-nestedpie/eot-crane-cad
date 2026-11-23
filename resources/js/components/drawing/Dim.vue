@@ -5,7 +5,10 @@
  * is where the dimension line sits (a y for horizontal, an x for vertical).
  * Estimated values are drawn in amber so they never look exact.
  */
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
+import { palettes } from './palettes.js';
+
+const palette = inject('palette', computed(() => palettes.paper));
 
 const props = defineProps({
     x1: { type: Number, required: true },
@@ -24,7 +27,7 @@ const ARROW = 7;
 const GAP = 3;
 const OVERSHOOT = 4;
 
-const color = computed(() => (props.estimate ? '#b45309' : '#1d4ed8'));
+const color = computed(() => (props.estimate ? palette.value.est : palette.value.dim));
 const textWidth = computed(() => props.label.length * 6.4);
 
 function extensionLine(fromX, fromY, toX, toY) {

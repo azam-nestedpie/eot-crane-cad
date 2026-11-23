@@ -9,14 +9,19 @@
  * Shapes of the hoist, corbels, girder flange width, etc. are SCHEMATIC
  * (visual only). Only the dimensioned values carry meaning.
  */
-import { computed, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 import Dim from './Dim.vue';
+import { palettes } from './palettes.js';
 
 const props = defineProps({
     calculation: { type: Object, required: true },
     name: { type: String, default: '' },
     dutyGroup: { type: String, default: '' },
+    theme: { type: String, default: 'paper' },
 });
+
+const c = computed(() => palettes[props.theme] ?? palettes.paper);
+provide('palette', c);
 
 const svgEl = ref(null);
 defineExpose({ svgEl });
@@ -26,8 +31,6 @@ const SIDE = 190;
 const FRONT_TOP = 130;
 const FRONT_MAX_H = 420;
 const FONT = 'Helvetica, Arial, sans-serif';
-const INK = '#111827';
-const CENTRE = '#6b7280';
 
 const dims = computed(() => props.calculation.dimensions);
 const v = computed(() => Object.fromEntries(Object.entries(dims.value).map(([k, d]) => [k, d.value])));
@@ -102,22 +105,28 @@ const pendantX = computed(() => v.value.span * 0.3);
         ref="svgEl"
         xmlns="http://www.w3.org/2000/svg"
         :viewBox="`0 0 ${W} ${totalHeight}`"
-        class="h-auto w-full bg-white"
+        class="block h-auto w-full"
         :font-family="FONT"
     >
         <defs>
             <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="6" stroke="#9ca3af" stroke-width="1" />
+                <line x1="0" y1="0" x2="0" y2="6" :stroke="c.hatch" stroke-width="1" />
+            </pattern>
+            <pattern id="bp-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" :stroke="c.grid" stroke-width="0.6" />
             </pattern>
         </defs>
 
-        <rect x="4" y="4" :width="W - 8" :height="totalHeight - 8" fill="none" :stroke="INK" stroke-width="1.5" />
+        <rect x="0" y="0" :width="W" :height="totalHeight" :fill="c.bg" />
+        <rect v-if="c.grid" x="0" y="0" :width="W" :height="totalHeight" fill="url(#bp-grid)" />
+
+        <rect x="4" y="4" :width="W - 8" :height="totalHeight - 8" fill="none" :stroke="c.ink" stroke-width="1.5" />
 
         <!-- ================= FRONT VIEW ================= -->
-        <text x="20" y="28" font-size="14" font-weight="bold" :fill="INK">FRONT VIEW</text>
-        <text x="20" y="44" font-size="10" fill="#4b5563">looking along the runway · all dimensions in mm</text>
+        <text x="20" y="28" font-size="14" font-weight="bold" :fill="c.ink">FRONT VIEW</text>
+        <text x="20" y="44" font-size="10" :fill="c.muted">looking along the runway · all dimensions in mm</text>
 
-        <g :stroke="INK" fill="none">
+        <g :stroke="c.ink" fill="none">
             <!-- floor -->
             <rect :x="f.X(f.wallL) - 20" :y="f.Y(0)" :width="f.X(f.wallR) - f.X(f.wallL) + 40" height="8" fill="url(#hatch)" stroke="none" />
             <line :x1="f.X(f.wallL) - 20" :y1="f.Y(0)" :x2="f.X(f.wallR) + 20" :y2="f.Y(0)" stroke-width="1.5" />
@@ -137,44 +146,44 @@ const pendantX = computed(() => v.value.span * 0.3);
             />
 
             <!-- rail centre lines -->
-            <line :x1="f.X(0)" :y1="f.Y(f.roof) + 4" :x2="f.X(0)" :y2="f.Y(0)" :stroke="CENTRE" stroke-width="0.5" stroke-dasharray="12 3 2 3" />
-            <line :x1="f.X(v.span)" :y1="f.Y(f.roof) + 4" :x2="f.X(v.span)" :y2="f.Y(0)" :stroke="CENTRE" stroke-width="0.5" stroke-dasharray="12 3 2 3" />
+            <line :x1="f.X(0)" :y1="f.Y(f.roof) + 4" :x2="f.X(0)" :y2="f.Y(0)" :stroke="c.centre" stroke-width="0.5" stroke-dasharray="12 3 2 3" />
+            <line :x1="f.X(v.span)" :y1="f.Y(f.roof) + 4" :x2="f.X(v.span)" :y2="f.Y(0)" :stroke="c.centre" stroke-width="0.5" stroke-dasharray="12 3 2 3" />
 
             <!-- runway corbels + rails (schematic) -->
-            <rect :x="f.X(f.wallL)" :y="f.Y(v.rail_height - 30)" :width="f.X(250) - f.X(f.wallL)" :height="atLeast(450 * f.s, 4)" fill="#e5e7eb" />
-            <rect :x="f.X(v.span - 250)" :y="f.Y(v.rail_height - 30)" :width="f.X(f.wallR) - f.X(v.span - 250)" :height="atLeast(450 * f.s, 4)" fill="#e5e7eb" />
-            <rect :x="f.X(0) - 2" :y="f.Y(v.rail_height)" width="4" :height="atLeast(30 * f.s, 2)" :fill="INK" />
-            <rect :x="f.X(v.span) - 2" :y="f.Y(v.rail_height)" width="4" :height="atLeast(30 * f.s, 2)" :fill="INK" />
+            <rect :x="f.X(f.wallL)" :y="f.Y(v.rail_height - 30)" :width="f.X(250) - f.X(f.wallL)" :height="atLeast(450 * f.s, 4)" :fill="c.steel" />
+            <rect :x="f.X(v.span - 250)" :y="f.Y(v.rail_height - 30)" :width="f.X(f.wallR) - f.X(v.span - 250)" :height="atLeast(450 * f.s, 4)" :fill="c.steel" />
+            <rect :x="f.X(0) - 2" :y="f.Y(v.rail_height)" width="4" :height="atLeast(30 * f.s, 2)" :fill="c.ink" />
+            <rect :x="f.X(v.span) - 2" :y="f.Y(v.rail_height)" width="4" :height="atLeast(30 * f.s, 2)" :fill="c.ink" />
 
             <!-- wheels -->
-            <circle :cx="f.X(0)" :cy="f.Y(v.rail_height + v.wheel_diameter / 2)" :r="atLeast((v.wheel_diameter / 2) * f.s, 2.5)" fill="#fff" />
-            <circle :cx="f.X(v.span)" :cy="f.Y(v.rail_height + v.wheel_diameter / 2)" :r="atLeast((v.wheel_diameter / 2) * f.s, 2.5)" fill="#fff" />
+            <circle :cx="f.X(0)" :cy="f.Y(v.rail_height + v.wheel_diameter / 2)" :r="atLeast((v.wheel_diameter / 2) * f.s, 2.5)" :fill="c.bg" />
+            <circle :cx="f.X(v.span)" :cy="f.Y(v.rail_height + v.wheel_diameter / 2)" :r="atLeast((v.wheel_diameter / 2) * f.s, 2.5)" :fill="c.bg" />
 
             <!-- end carriages -->
-            <rect :x="f.X(-v.end_overhang)" :y="f.Y(f.gb + v.girder_depth * 0.5)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="f.Y(v.rail_height + v.wheel_diameter * 0.3) - f.Y(f.gb + v.girder_depth * 0.5)" fill="#d1d5db" />
-            <rect :x="f.X(v.span - v.end_overhang)" :y="f.Y(f.gb + v.girder_depth * 0.5)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="f.Y(v.rail_height + v.wheel_diameter * 0.3) - f.Y(f.gb + v.girder_depth * 0.5)" fill="#d1d5db" />
+            <rect :x="f.X(-v.end_overhang)" :y="f.Y(f.gb + v.girder_depth * 0.5)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="f.Y(v.rail_height + v.wheel_diameter * 0.3) - f.Y(f.gb + v.girder_depth * 0.5)" :fill="c.steelDark" />
+            <rect :x="f.X(v.span - v.end_overhang)" :y="f.Y(f.gb + v.girder_depth * 0.5)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="f.Y(v.rail_height + v.wheel_diameter * 0.3) - f.Y(f.gb + v.girder_depth * 0.5)" :fill="c.steelDark" />
 
             <!-- girder -->
-            <rect :x="f.X(-v.end_overhang)" :y="f.Y(f.gt)" :width="f.X(v.span + v.end_overhang) - f.X(-v.end_overhang)" :height="f.Y(f.gb) - f.Y(f.gt)" fill="#fde68a" stroke-width="1.2" />
-            <text :x="f.X(f.xc) - Math.min(120, (f.X(v.span) - f.X(0)) / 4)" :y="(f.Y(f.gb) + f.Y(f.gt)) / 2 + 5" font-size="13" font-weight="bold" :fill="INK" stroke="none" text-anchor="middle">{{ v.capacity }} t</text>
+            <rect :x="f.X(-v.end_overhang)" :y="f.Y(f.gt)" :width="f.X(v.span + v.end_overhang) - f.X(-v.end_overhang)" :height="f.Y(f.gb) - f.Y(f.gt)" :fill="c.girder" stroke-width="1.2" />
+            <text :x="f.X(f.xc) - Math.min(120, (f.X(v.span) - f.X(0)) / 4)" :y="(f.Y(f.gb) + f.Y(f.gt)) / 2 + 5" font-size="13" font-weight="bold" :fill="c.ink" stroke="none" text-anchor="middle">{{ v.capacity }} t</text>
 
             <!-- hoist, ropes, hook (schematic) -->
-            <rect :x="hook.body.x" :y="hook.body.y" :width="hook.body.w" :height="hook.body.h" fill="#e5e7eb" />
+            <rect :x="hook.body.x" :y="hook.body.y" :width="hook.body.w" :height="hook.body.h" :fill="c.steel" />
             <line :x1="hook.cx - 3" :y1="hook.ropeTop" :x2="hook.cx - 3" :y2="hook.ropeBottom" stroke-width="0.8" />
             <line :x1="hook.cx + 3" :y1="hook.ropeTop" :x2="hook.cx + 3" :y2="hook.ropeBottom" stroke-width="0.8" />
-            <rect :x="hook.cx - hook.block.w / 2" :y="hook.block.y" :width="hook.block.w" :height="hook.block.h" fill="#9ca3af" />
+            <rect :x="hook.cx - hook.block.w / 2" :y="hook.block.y" :width="hook.block.w" :height="hook.block.h" :fill="c.steelDark" />
             <path :d="hook.path" stroke-width="2" />
 
             <!-- hook end positions -->
-            <line :x1="f.X(v.hook_approach_left)" :y1="f.Y(f.gb)" :x2="f.X(v.hook_approach_left)" :y2="f.Y(v.lifting_height)" :stroke="CENTRE" stroke-width="0.7" stroke-dasharray="4 3" />
-            <line :x1="f.X(v.span - v.hook_approach_right)" :y1="f.Y(f.gb)" :x2="f.X(v.span - v.hook_approach_right)" :y2="f.Y(v.lifting_height)" :stroke="CENTRE" stroke-width="0.7" stroke-dasharray="4 3" />
+            <line :x1="f.X(v.hook_approach_left)" :y1="f.Y(f.gb)" :x2="f.X(v.hook_approach_left)" :y2="f.Y(v.lifting_height)" :stroke="c.centre" stroke-width="0.7" stroke-dasharray="4 3" />
+            <line :x1="f.X(v.span - v.hook_approach_right)" :y1="f.Y(f.gb)" :x2="f.X(v.span - v.hook_approach_right)" :y2="f.Y(v.lifting_height)" :stroke="c.centre" stroke-width="0.7" stroke-dasharray="4 3" />
 
             <!-- pendant control -->
             <line :x1="f.X(pendantX)" :y1="f.Y(f.gb)" :x2="f.X(pendantX)" :y2="f.Y(v.pendant_above_floor + 400)" stroke-width="0.6" />
-            <rect :x="f.X(pendantX) - 3" :y="f.Y(v.pendant_above_floor + 400)" width="6" :height="atLeast(400 * f.s, 8)" fill="#fff" />
+            <rect :x="f.X(pendantX) - 3" :y="f.Y(v.pendant_above_floor + 400)" width="6" :height="atLeast(400 * f.s, 8)" :fill="c.bg" />
         </g>
 
-        <g font-size="10" fill="#4b5563">
+        <g font-size="10" :fill="c.muted">
             <text :x="f.X(f.wallL) + 4" :y="f.Y(0) - 5">Floor ±0</text>
             <text :x="f.X(f.xc)" :y="f.Y(f.roof) - 4" text-anchor="middle">
                 {{ f.hasBuilding ? 'Roof (given)' : 'Roof: not given, min. required shown' }}
@@ -220,21 +229,21 @@ const pendantX = computed(() => v.value.span * 0.3);
         <Dim orient="v" :x1="f.X(pendantX)" :y1="f.Y(0)" :x2="f.X(pendantX)" :y2="f.Y(v.pendant_above_floor)" :at="f.X(pendantX) + 28" :label="label('pendant_above_floor')" />
 
         <!-- ================= PLAN VIEW ================= -->
-        <line x1="4" :y1="p.top - 8" :x2="W - 4" :y2="p.top - 8" stroke="#d1d5db" />
-        <text x="20" :y="p.top + 14" font-size="14" font-weight="bold" :fill="INK">PLAN VIEW</text>
-        <text x="20" :y="p.top + 30" font-size="10" fill="#4b5563">from above · same scale as front view</text>
+        <line x1="4" :y1="p.top - 8" :x2="W - 4" :y2="p.top - 8" :stroke="c.steelDark" />
+        <text x="20" :y="p.top + 14" font-size="14" font-weight="bold" :fill="c.ink">PLAN VIEW</text>
+        <text x="20" :y="p.top + 30" font-size="10" :fill="c.muted">from above · same scale as front view</text>
 
-        <g :stroke="INK" fill="none">
+        <g :stroke="c.ink" fill="none">
             <!-- runway rails -->
-            <line :x1="f.X(0)" :y1="p.Y(-p.railLen / 2)" :x2="f.X(0)" :y2="p.Y(p.railLen / 2)" stroke-width="2" :stroke="CENTRE" />
-            <line :x1="f.X(v.span)" :y1="p.Y(-p.railLen / 2)" :x2="f.X(v.span)" :y2="p.Y(p.railLen / 2)" stroke-width="2" :stroke="CENTRE" />
+            <line :x1="f.X(0)" :y1="p.Y(-p.railLen / 2)" :x2="f.X(0)" :y2="p.Y(p.railLen / 2)" stroke-width="2" :stroke="c.centre" />
+            <line :x1="f.X(v.span)" :y1="p.Y(-p.railLen / 2)" :x2="f.X(v.span)" :y2="p.Y(p.railLen / 2)" stroke-width="2" :stroke="c.centre" />
 
             <!-- girder (schematic width) -->
-            <rect :x="f.X(v.end_overhang)" :y="p.Y(-300)" :width="f.X(v.span - v.end_overhang) - f.X(v.end_overhang)" :height="atLeast(600 * f.s, 4)" fill="#fde68a" />
+            <rect :x="f.X(v.end_overhang)" :y="p.Y(-300)" :width="f.X(v.span - v.end_overhang) - f.X(v.end_overhang)" :height="atLeast(600 * f.s, 4)" :fill="c.girder" />
 
             <!-- end carriages -->
-            <rect :x="f.X(-v.end_overhang)" :y="p.Y(-v.end_carriage_length / 2)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="v.end_carriage_length * f.s" fill="#d1d5db" />
-            <rect :x="f.X(v.span - v.end_overhang)" :y="p.Y(-v.end_carriage_length / 2)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="v.end_carriage_length * f.s" fill="#d1d5db" />
+            <rect :x="f.X(-v.end_overhang)" :y="p.Y(-v.end_carriage_length / 2)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="v.end_carriage_length * f.s" :fill="c.steelDark" />
+            <rect :x="f.X(v.span - v.end_overhang)" :y="p.Y(-v.end_carriage_length / 2)" :width="atLeast(2 * v.end_overhang * f.s, 4)" :height="v.end_carriage_length * f.s" :fill="c.steelDark" />
 
             <!-- wheels -->
             <template v-for="x in [0, v.span]" :key="x">
@@ -245,15 +254,15 @@ const pendantX = computed(() => v.value.span * 0.3);
                     :y="p.Y(y) - atLeast((v.wheel_diameter / 2) * f.s, 3)"
                     width="4"
                     :height="2 * atLeast((v.wheel_diameter / 2) * f.s, 3)"
-                    :fill="INK"
+                    :fill="c.ink"
                 />
             </template>
 
             <!-- trolley / hoist (schematic) -->
-            <rect :x="f.X(f.xc - 650)" :y="p.Y(-700)" :width="1300 * f.s" :height="1400 * f.s" fill="#e5e7eb" />
+            <rect :x="f.X(f.xc - 650)" :y="p.Y(-700)" :width="1300 * f.s" :height="1400 * f.s" :fill="c.steel" />
         </g>
 
-        <text :x="f.X(0) + 6" :y="p.Y(-p.railLen / 2) + 10" font-size="10" fill="#4b5563">runway rail</text>
+        <text :x="f.X(0) + 6" :y="p.Y(-p.railLen / 2) + 10" font-size="10" :fill="c.muted">runway rail</text>
 
         <!-- plan dimensions -->
         <Dim :x1="f.X(0)" :y1="p.Y(p.railLen / 2)" :x2="f.X(v.span)" :y2="p.Y(p.railLen / 2)" :at="p.Y(p.railLen / 2) + 28" :label="`Span ${label('span')}`" />
@@ -262,24 +271,24 @@ const pendantX = computed(() => v.value.span * 0.3);
         <Dim orient="v" :x1="f.X(v.span + v.end_overhang)" :y1="p.Y(-v.end_carriage_length / 2)" :x2="f.X(v.span + v.end_overhang)" :y2="p.Y(v.end_carriage_length / 2)" :at="f.X(f.wallR) + 66" :label="label('end_carriage_length')" :estimate="isEstimate('end_carriage_length')" />
 
         <!-- ================= TITLE BLOCK ================= -->
-        <g :transform="`translate(4 ${titleTop})`" font-size="11" :fill="INK">
-            <rect x="0" y="0" :width="W - 8" height="82" fill="#f9fafb" :stroke="INK" />
-            <line x1="380" y1="0" x2="380" y2="82" :stroke="INK" />
-            <line x1="760" y1="0" x2="760" y2="82" :stroke="INK" />
+        <g :transform="`translate(4 ${titleTop})`" font-size="11" :fill="c.ink">
+            <rect x="0" y="0" :width="W - 8" height="82" :fill="c.panel" :stroke="c.ink" />
+            <line x1="380" y1="0" x2="380" y2="82" :stroke="c.ink" />
+            <line x1="760" y1="0" x2="760" y2="82" :stroke="c.ink" />
 
-            <text x="12" y="20" font-size="10" fill="#6b7280">DESIGN</text>
+            <text x="12" y="20" font-size="10" :fill="c.muted">DESIGN</text>
             <text x="12" y="40" font-size="15" font-weight="bold">{{ name || 'Unsaved design' }}</text>
             <text x="12" y="62">Single-girder top-running EOT crane</text>
 
             <text x="392" y="20">Capacity: {{ v.capacity }} t · Span: {{ label('span') }} mm</text>
             <text x="392" y="38">Lifting height: {{ label('lifting_height') }} mm · Duty: FEM {{ dutyGroup }}</text>
             <text x="392" y="56">Units: mm · Scale: NTS · Date: {{ today }}</text>
-            <text x="392" y="74" font-size="10" fill="#6b7280">Hoist, corbel and flange shapes are schematic.</text>
+            <text x="392" y="74" font-size="10" :fill="c.muted">Hoist, corbel and flange shapes are schematic.</text>
 
-            <text x="772" y="20" font-weight="bold" fill="#b91c1c">PRELIMINARY · NOT FOR CONSTRUCTION</text>
-            <text x="772" y="40" fill="#1d4ed8">Blue: input, reference drawing or exact geometry</text>
-            <text x="772" y="58" fill="#b45309">Amber ≈: my estimate, not verified</text>
-            <text x="772" y="74" font-size="10" fill="#6b7280">Sources for every value are in the table.</text>
+            <text x="772" y="20" font-weight="bold" :fill="c.danger">PRELIMINARY · NOT FOR CONSTRUCTION</text>
+            <text x="772" y="40" :fill="c.dim">Blue: input, reference drawing or exact geometry</text>
+            <text x="772" y="58" :fill="c.est">Amber ≈: my estimate, not verified</text>
+            <text x="772" y="74" font-size="10" :fill="c.muted">Sources for every value are in the table.</text>
         </g>
     </svg>
 </template>

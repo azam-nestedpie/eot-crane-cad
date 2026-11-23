@@ -33,10 +33,13 @@ composer test
 ## Using it
 
 1. The form starts with the reference crane (10 t, 25 m span, 7.9 m lift, rail at 8321 mm).
-2. Change any input. The drawing updates live (the server validates and calculates each change).
+2. Move a slider or type a value. The drawing and the summary cards update live
+   (the server validates and calculates each change).
 3. Invalid input shows the server's message under the field. The last valid drawing stays visible but faded.
-4. **Save design** stores it. Saved designs are listed on the left: click one to reopen it, edit, and **Save changes**.
-5. **Download SVG** exports the drawing.
+4. **Save design** (or Ctrl/⌘ + S) stores it. Saved designs are listed on the left and can be searched.
+   Click one to reopen it, edit it, and **Save changes**.
+5. Switch the drawing between **Paper** and **Blueprint**, zoom it, or download it as **SVG**.
+   The **Dimensions** tab lists every value with its source and can be filtered by source.
 
 ## Stack and why
 
@@ -72,6 +75,7 @@ Vue SVG  ◀───────────── JSON (all values in mm, each
 
 | Method | Path | Does |
 |---|---|---|
+| GET | `/input-schema` | Input limits, units and steps (the UI builds its sliders from this) |
 | POST | `/calculate` | Validate + calculate, nothing saved (live preview) |
 | GET | `/designs` | List saved designs (inputs only, newest edit first) |
 | POST | `/designs` | Create, returns design + calculation |
@@ -107,8 +111,6 @@ shown in the app's table and in `CraneCalculator.php`. My reasoning is in
 - On very narrow or very tall cranes some labels can crowd together.
 - No users or auth. Concurrent edits are last-write-wins.
 - Millimetres only. SVG export only (no PDF or DXF).
-- The range hints in the form repeat the server limits by hand. The server is
-  still the only thing that enforces them.
 
 ## Hours spent
 
