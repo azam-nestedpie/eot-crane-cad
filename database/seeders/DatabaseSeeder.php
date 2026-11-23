@@ -2,24 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Design;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * One example design: the crane from the assignment's reference drawing.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $name = 'Reference drawing crane (10 t, 25 m)';
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        Design::query()->firstOrCreate(['name' => $name], Design::factory()->raw([
+            'name' => $name,
+            'notes' => 'Inputs copied from the sample drawing in the assignment PDF.',
+        ]));
     }
 }
