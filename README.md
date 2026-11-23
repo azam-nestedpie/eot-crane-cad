@@ -1,58 +1,120 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# EOT Crane Drawing Generator
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A small full-stack web app that generates a dimensioned 2D layout drawing of a
+**single-girder, top-running overhead (EOT) crane** from a few inputs, and lets
+you save, list, reopen, edit and delete designs.
 
-## About Laravel
+Every number on the drawing says where it came from: **input**, **reference**
+(read off the sample drawing), **derived** (exact geometry) or **estimate**
+(my guess, shown in amber with `≈`).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Run it
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Requirements: PHP 8.3+, Composer 2, Node 20+ (tested with PHP 8.5, Node 24).
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone <this repo> && cd eot-crane-cad
+composer setup        # installs PHP + JS deps, creates .env and SQLite DB, migrates, seeds, builds the frontend
+php artisan serve     # open http://127.0.0.1:8000
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+For development with hot reload use `composer dev` instead of `php artisan serve`.
 
-## Contributing
+Run the tests (unit + API feature tests, in-memory SQLite):
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+composer test
+```
 
-## Code of Conduct
+> If `npm install` fails with `EACCES` on `~/.npm`, your npm cache has
+> root-owned files. Fix it with `sudo chown -R $(id -u):$(id -g) ~/.npm`, or
+> run setup with a temporary cache: `npm_config_cache=/tmp/npm-cache composer setup`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Using it
 
-## Security Vulnerabilities
+1. The form starts with the reference crane (10 t, 25 m span, 7.9 m lift, rail at 8321 mm).
+2. Change any input. The drawing updates live (the server validates and calculates each change).
+3. Invalid input shows the server's message under the field. The last valid drawing stays visible but faded.
+4. **Save design** stores it. Saved designs are listed on the left: click one to reopen it, edit, and **Save changes**.
+5. **Download SVG** exports the drawing.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Stack and why
 
-## License
+| Part | Choice | Why |
+|---|---|---|
+| Backend | Laravel 13 (PHP) | Form Requests for validation, Eloquent + migrations, JSON error handling and a test runner built in. Most of the graded work is here. |
+| Frontend | Vue 3 + Vite, served by Laravel | One repo, one server, no CORS. Small reactive UI without a separate build setup. |
+| Database | SQLite | No setup. Allowed by the brief. Switching to MySQL/Postgres is a `.env` change. |
+| Drawing | Hand-built SVG | Vector, sharp at any zoom, selectable text, easy to download. No CAD library needed for 2 views. |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## How it works
+
+```
+Vue form ──POST /api/v1/calculate──▶ CraneInputRequest (validation)
+                                        └─▶ CraneCalculator ──▶ dimensions[] + warnings[]
+Vue SVG  ◀───────────── JSON (all values in mm, each with source + basis) ─┘
+```
+
+- **`app/Services/Crane/CraneCalculator.php`** is the single source of truth.
+  Every rule and constant is there, with a comment on where it came from.
+  The frontend only maps millimetres to pixels and does no engineering.
+- **Validation happens on the server in two layers** (`app/Http/Requests/CraneInputRequest.php`):
+  1. Field rules: required, type, range, capacity in 0.5 t steps, duty group enum.
+  2. Physical cross-field rules, which run only if layer 1 passes. The hook cannot
+     go higher than the hoist under the girder allows. The building, if given,
+     must be taller than the crane plus 200 mm roof clearance.
+- **Only inputs are stored.** Derived dimensions are recalculated on every read,
+  so a fixed formula applies to all saved designs.
+- Errors: 422 with per-field messages, 404 `{"message":"Not found."}`,
+  400 for a malformed JSON body.
+
+### API (`/api/v1`)
+
+| Method | Path | Does |
+|---|---|---|
+| POST | `/calculate` | Validate + calculate, nothing saved (live preview) |
+| GET | `/designs` | List saved designs (inputs only, newest edit first) |
+| POST | `/designs` | Create, returns design + calculation |
+| GET | `/designs/{id}` | One design + calculation |
+| PUT | `/designs/{id}` | Full update, returns design + calculation |
+| DELETE | `/designs/{id}` | Delete (204) |
+
+## Inputs
+
+| Input | Range | Unit |
+|---|---|---|
+| Rated capacity | 1 – 20, steps of 0.5 | t |
+| Span (rail centre to rail centre) | 5 000 – 30 000 | mm |
+| Rail height (floor to top of rail) | 3 500 – 22 000 | mm |
+| Lifting height (floor to hook, highest) | 2 500 – 20 000 | mm |
+| Building clear height (optional) | 4 000 – 30 000 | mm |
+| Duty group (FEM) | A3 – A6 (display only) | – |
+
+The full list of derived dimensions, with the source and basis of each one, is
+shown in the app's table and in `CraneCalculator.php`. My reasoning is in
+`DECISIONS.md`.
+
+## Known limitations
+
+- **All estimates are calibrated on one sample drawing** (10 t, 25 m). Far from
+  that point they are extrapolations, and the app warns about it.
+- **No structural engineering**: no girder strength or deflection check, no
+  wheel loads, no crane weight. Girder depth is a span ratio, not a calculation.
+- Hoist-related values (hook headroom, hook approach) come from the reference
+  10 t hoist or a guessed table. Real values come from a hoist catalogue.
+- Single-girder top-running crane only. No double-girder or underslung crane,
+  and no side section (A-A) or wheel detail (Z).
+- On very narrow or very tall cranes some labels can crowd together.
+- No users or auth. Concurrent edits are last-write-wins.
+- Millimetres only. SVG export only (no PDF or DXF).
+- The range hints in the form repeat the server limits by hand. The server is
+  still the only thing that enforces them.
+
+## Hours spent
+
+_TODO: fill in your real hours._
+
+## Other docs
+
+- `DECISIONS.md`: my decisions and assumptions (written by me, without AI).
+- `AI_LOG.md`: how AI was used and checked.
