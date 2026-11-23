@@ -11,8 +11,9 @@ namespace App\Services\Crane;
  *  - input:     typed by the user.
  *  - reference: read directly off the reference drawing
  *               (10 t, 25 m span, "PRELIMINARY DRAWING / OFFER ONLY").
- *  - derived:   pure geometry from other values (exact, given its inputs).
- *  - estimate:  inferred or scaled by me from a single drawing. Not verified.
+ *  - derived:   pure geometry from inputs/reference values only.
+ *  - estimate:  inferred or scaled by me from a single drawing, or computed
+ *               from such a value. Not verified.
  *
  * All lengths are millimetres, capacity is tonnes.
  */
@@ -125,17 +126,17 @@ class CraneCalculator
             'Inferred from reference: 7900 + 620 − 8321 ≈ 200. Assumed constant for all sizes.');
         $d['girder_depth'] = $this->dim('Girder depth', $girderDepth, 'mm', 'estimate',
             'Span ÷ 21, min 400. Fitted to one point (≈1170 at 25 m). Real depth needs a strength/deflection calc and depends on capacity too.');
-        $d['crane_top_above_rail'] = $this->dim('Crane top above rail top', $craneTopAboveRail, 'mm', 'derived',
-            'Girder underside above rail + girder depth. Reference shows 1369 at 25 m; this model gives 1390.');
+        $d['crane_top_above_rail'] = $this->dim('Crane top above rail top', $craneTopAboveRail, 'mm', 'estimate',
+            'Derived from two estimates: girder underside above rail + girder depth. Reference shows 1369 at 25 m; this model gives 1390.');
         $d['roof_clearance'] = $this->dim('Min. clearance crane top to roof', self::ROOF_CLEARANCE, 'mm', 'reference',
             'Reference: "200" above the crane.');
-        $d['min_building_height'] = $this->dim('Min. building clear height', $minBuildingHeight, 'mm', 'derived',
-            'Rail height + crane top above rail + roof clearance.');
+        $d['min_building_height'] = $this->dim('Min. building clear height', $minBuildingHeight, 'mm', 'estimate',
+            'Rail height + crane top above rail + roof clearance. Inherits the girder depth estimate.');
 
         $d['hook_headroom'] = $this->dim('Hook (highest) to girder underside', $hookHeadroom, 'mm', $this->isReferenceCapacity($capacity) ? 'reference' : 'estimate',
             'Reference shows 620 for the 10 t hoist. Other capacities use my guessed table (2t:450, 5t:520, 10t:620, 16t:720, 20t:800). Should come from the hoist catalogue.');
-        $d['max_lifting_height'] = $this->dim('Max. possible lifting height', $maxLiftingHeight, 'mm', 'derived',
-            'Rail height + girder underside above rail − hook headroom.');
+        $d['max_lifting_height'] = $this->dim('Max. possible lifting height', $maxLiftingHeight, 'mm', 'estimate',
+            'Rail height + girder underside above rail − hook headroom. Inherits those estimates.');
         $d['hook_approach_left'] = $this->dim('Min. hook approach, left (from rail centre)', self::HOOK_APPROACH_LEFT, 'mm', 'reference',
             'Reference: "Min.920". Assumed measured from rail centre. Depends on the actual hoist model.');
         $d['hook_approach_right'] = $this->dim('Min. hook approach, right (from rail centre)', self::HOOK_APPROACH_RIGHT, 'mm', 'reference',
