@@ -54,6 +54,21 @@ class CraneInputRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    public function attributes(): array
+    {
+        return [
+            'capacity_t' => 'capacity',
+            'span_mm' => 'span',
+            'lifting_height_mm' => 'lifting height',
+            'rail_height_mm' => 'rail height',
+            'building_height_mm' => 'building height',
+            'duty_group' => 'duty group',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

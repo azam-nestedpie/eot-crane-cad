@@ -84,7 +84,25 @@ class DesignApiTest extends TestCase
     {
         $this->getJson('/api/v1/designs/999')
             ->assertNotFound()
-            ->assertJsonStructure(['message']);
+            ->assertExactJson(['message' => 'Not found.']);
+    }
+
+    public function test_malformed_json_returns_400_not_validation_errors(): void
+    {
+        $this->call('POST', route('api.v1.designs.store'), server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+        ], content: '{"name": "broken')
+            ->assertStatus(400)
+            ->assertJsonPath('message', 'Malformed JSON body.');
+
+        $this->assertDatabaseCount('designs', 0);
+    }
+
+    public function test_validation_messages_use_readable_field_names(): void
+    {
+        $this->postJson(route('api.v1.designs.store'), $this->validPayload(['span_mm' => null]))
+            ->assertJsonPath('errors.span_mm.0', 'The span field is required.');
     }
 
     public function test_it_rejects_missing_and_out_of_range_fields(): void
