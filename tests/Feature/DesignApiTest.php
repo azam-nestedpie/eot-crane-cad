@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Design;
+use App\Services\Crane\CraneCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -151,6 +152,16 @@ class DesignApiTest extends TestCase
             ->assertUnprocessable();
 
         $this->assertSame('Original', $design->fresh()->name);
+    }
+
+    public function test_input_schema_exposes_the_same_limits_the_server_validates(): void
+    {
+        $this->getJson(route('api.v1.input-schema'))
+            ->assertOk()
+            ->assertJsonPath('data.fields.span_mm.min', CraneCalculator::LIMITS['span_mm'][0])
+            ->assertJsonPath('data.fields.span_mm.max', CraneCalculator::LIMITS['span_mm'][1])
+            ->assertJsonPath('data.fields.building_height_mm.required', false)
+            ->assertJsonPath('data.duty_groups', ['A3', 'A4', 'A5', 'A6']);
     }
 
     public function test_calculate_endpoint_previews_without_saving(): void
